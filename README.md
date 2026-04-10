@@ -7,8 +7,8 @@ A high-performance Atuin sync server implementation using Salvo web framework wi
 - **Salvo Web Framework** - Modern, fast Rust web framework
 - **SQLite Backend** - Lightweight, embedded database
 - **Official Database Layer** - Reuses `atuin-server-sqlite` for migrations and operations
-- **Multi-platform** - Supports Linux (amd64/arm64), macOS (amd64/arm64), Windows (amd64)
-- **Docker Ready** - Multi-platform Docker images via GitHub Actions
+- **Multi-platform** - Supports Linux (amd64), macOS (amd64/arm64), Windows (amd64)
+- **Docker Ready** - Docker images via GitHub Actions (linux/amd64)
 - **Prometheus Metrics** - Built-in `/metrics` endpoint
 - **Graceful Shutdown** - Handles SIGTERM/SIGINT properly
 - **Webhook Support** - Notify external services on user registration

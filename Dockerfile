@@ -1,7 +1,4 @@
-# Runtime image - supports amd64 and arm64
-# Binary path determined by TARGETARCH
-
-ARG TARGETARCH
+# Runtime image - amd64 only
 
 FROM alpine:3.23
 
@@ -16,8 +13,7 @@ ENV ATUIN_CONFIG_DIR=/app
 
 EXPOSE 8888
 
-# Use TARGETARCH to select correct binary
-COPY bin/atuin-server-${TARGETARCH} /app/atuin-server
+COPY atuin-server /app/atuin-server
 
 ENTRYPOINT ["/app/atuin-server"]
 CMD ["start"]
