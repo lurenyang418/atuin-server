@@ -506,13 +506,24 @@ pub async fn add_history(req: &mut Request, res: &mut Response) {
         }
     };
 
-    let body: Vec<AddHistoryRequest> = match req.parse_json().await {
+    let body: Vec<AddHistoryRequest> = match req
+        .parse_json_with_max_size(state.settings.max_record_size)
+        .await
+    {
         Ok(b) => b,
         Err(e) => {
-            ServerError::Internal(format!("Failed to parse request: {}", e)).render(res);
+            ServerError::from_parse_error(&e).render(res);
             return;
         }
     };
+
+    if body
+        .iter()
+        .any(|h| h.data.to_string().len() > state.settings.max_history_length)
+    {
+        ServerError::PayloadTooLarge.render(res);
+        return;
+    }
 
     let history: Vec<NewHistory> = body
         .into_iter()
@@ -594,7 +605,7 @@ pub async fn me(req: &mut Request, res: &mut Response) {
 
 #[handler]
 pub async fn v0_record_post(req: &mut Request, res: &mut Response) {
-    let _state = get_state();
+    let state = get_state();
 
     let user = match authenticate(req).await {
         Ok(u) => u,
@@ -604,11 +615,14 @@ pub async fn v0_record_post(req: &mut Request, res: &mut Response) {
         }
     };
 
-    // Parse record data - use 100MB limit for sync payloads
-    let _body: serde_json::Value = match req.parse_json_with_max_size(100 * 1024 * 1024).await {
+    // Parse record data with configured payload size limit.
+    let _body: serde_json::Value = match req
+        .parse_json_with_max_size(state.settings.max_record_size)
+        .await
+    {
         Ok(b) => b,
         Err(e) => {
-            ServerError::Internal(format!("Failed to parse request: {}", e)).render(res);
+            ServerError::from_parse_error(&e).render(res);
             return;
         }
     };

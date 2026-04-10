@@ -73,7 +73,7 @@ page_size = 1100
 sync_v1_enabled = true
 
 # Database URI (SQLite or PostgreSQL)
-db_uri = "sqlite:///config/atuin-server.db"
+db_uri = "sqlite://atuin.db"
 "#
             );
         }

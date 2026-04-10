@@ -65,15 +65,16 @@ docker run -d -p 8888:8888 \
 ```
 
 **Default values:**
-- `db_uri = "sqlite:///app/data/atuin.db"`
+- `db_uri = "sqlite://atuin.db"` (used when no config file is found)
 - `host = "0.0.0.0"`, `port = 8888`
 - `open_registration = true`
 
 ## Configuration
 
-Configuration file location: `ATUIN_CONFIG_DIR/server.toml` (default: `/app/data`)
-
-```toml
+Configuration file loading order:
+- If `ATUIN_CONFIG_DIR` is set, only `ATUIN_CONFIG_DIR/server.toml` is used.
+- If `ATUIN_CONFIG_DIR` is not set, `./server.toml` is used.
+- If the selected config file does not exist, built-in defaults are used (including `db_uri = "sqlite://atuin.db"`).
 
 ```toml
 # host to bind, can also be passed via CLI args
@@ -86,12 +87,12 @@ port = 8888
 open_registration = true
 
 # sqlite
-db_uri = "sqlite:///app/data/atuin.db"
+db_uri = "sqlite://atuin.db"
 
-# Maximum size for one history entry
+# Maximum serialized size (bytes) for one history entry
 max_history_length = 8192
 
-# Maximum size for one record entry
+# Maximum request payload size (bytes)
 max_record_size = 1073741824
 
 # Default page size for requests
@@ -112,11 +113,11 @@ sync_v1_enabled = true
 | `host` | `"0.0.0.0"` | Bind address |
 | `port` | `8888` | Bind port |
 | `open_registration` | `true` | Allow public registration |
-| `max_history_length` | `8192` | Max history entries per command |
-| `max_record_size` | `1073741824` | Max record size (bytes) |
+| `max_history_length` | `8192` | Max serialized size (bytes) of a single history entry |
+| `max_record_size` | `1073741824` | Max request payload size (bytes) for sync record/history uploads |
 | `page_size` | `1100` | Sync page size |
 | `sync_v1_enabled` | `true` | Enable legacy sync API |
-| `db_uri` | `sqlite:///app/data/atuin.db` | Database URI |
+| `db_uri` | `sqlite://atuin.db` | Database URI |
 | `register_webhook_url` | - | Webhook URL for new registrations |
 | `register_webhook_username` | - | Webhook username |
 

@@ -69,3 +69,6 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "rus
 
 [features]
 default = []
+
+[dev-dependencies]
+tempfile = "3"

@@ -12,13 +12,9 @@ use crate::handlers;
 use crate::middleware;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 
-/// Get default database URI based on ATUIN_CONFIG_DIR
+/// Fallback database URI used when no config file is provided.
 fn default_db_uri() -> String {
-    if let Ok(config_dir) = std::env::var("ATUIN_CONFIG_DIR") {
-        format!("sqlite://{}/atuin.db", config_dir)
-    } else {
-        "sqlite:///atuin.db".to_string()
-    }
+    "sqlite://atuin.db".to_string()
 }
 
 fn setup_metrics_recorder() -> PrometheusHandle {
@@ -66,7 +62,7 @@ pub struct Settings {
 
 impl Settings {
     pub fn new() -> anyhow::Result<Self> {
-        // Check ATUIN_CONFIG_DIR first, then fall back to current directory
+        // If ATUIN_CONFIG_DIR is set, only use that directory; otherwise use current directory.
         let config_path = if let Ok(config_dir) = std::env::var("ATUIN_CONFIG_DIR") {
             std::path::Path::new(&config_dir).join("server.toml")
         } else {
@@ -75,7 +71,7 @@ impl Settings {
 
         if config_path.exists() {
             let contents = std::fs::read_to_string(config_path)?;
-            let config: toml::Value = contents.parse()?;
+            let config: toml::Table = toml::from_str(&contents)?;
             Ok(Self {
                 host: config
                     .get("host")
@@ -174,8 +170,8 @@ pub fn init_state(state: AppState) {
     APP_STATE.set(state).expect("AppState already initialized");
 }
 
-pub fn create_router() -> Router {
-    Router::new()
+pub fn create_router(sync_v1_enabled: bool) -> Router {
+    let router = Router::new()
         .push(Router::with_path("/").get(handlers::index))
         .push(Router::with_path("/healthz").get(handlers::health_check))
         .push(Router::with_path("/metrics").get(metrics_handler))
@@ -184,14 +180,22 @@ pub fn create_router() -> Router {
         .push(Router::with_path("/login").post(handlers::login))
         .push(Router::with_path("/user/<username>").get(handlers::get_user))
         .push(Router::with_path("/account").delete(handlers::delete_user))
-        .push(Router::with_path("/account/password").patch(handlers::change_password))
-        // Sync v1 endpoints
-        .push(Router::with_path("/sync/count").get(handlers::sync_count))
-        .push(Router::with_path("/sync/history").get(handlers::sync_history))
-        .push(Router::with_path("/sync/status").get(handlers::sync_status))
-        .push(Router::with_path("/sync/calendar/<focus>").get(handlers::sync_calendar))
-        .push(Router::with_path("/history").post(handlers::add_history))
-        .push(Router::with_path("/history").delete(handlers::delete_history))
+        .push(Router::with_path("/account/password").patch(handlers::change_password));
+
+    let router = if sync_v1_enabled {
+        router
+            // Sync v1 endpoints
+            .push(Router::with_path("/sync/count").get(handlers::sync_count))
+            .push(Router::with_path("/sync/history").get(handlers::sync_history))
+            .push(Router::with_path("/sync/status").get(handlers::sync_status))
+            .push(Router::with_path("/sync/calendar/<focus>").get(handlers::sync_calendar))
+            .push(Router::with_path("/history").post(handlers::add_history))
+            .push(Router::with_path("/history").delete(handlers::delete_history))
+    } else {
+        router
+    };
+
+    router
         // Record endpoints (deprecated)
         .push(Router::with_path("/record").post(handlers::record_post))
         .push(Router::with_path("/record").get(handlers::record_index))
@@ -243,11 +247,12 @@ pub async fn launch(settings: Settings, addr: SocketAddr) -> anyhow::Result<()> 
     }
 
     let db: Sqlite = Sqlite::new(&settings.db_settings).await?;
+    let sync_v1_enabled = settings.sync_v1_enabled;
 
     let state = AppState { db, settings };
     init_state(state);
 
-    let router = create_router();
+    let router = create_router(sync_v1_enabled);
     let catcher = middleware::create_catcher();
 
     tracing::info!(addr = %addr, "Starting Atuin server");
@@ -264,4 +269,58 @@ pub async fn launch(settings: Settings, addr: SocketAddr) -> anyhow::Result<()> 
     server.serve(Service::new(router).catcher(catcher)).await;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use once_cell::sync::Lazy;
+    use salvo::test::TestClient;
+    use std::sync::Mutex;
+    use tempfile::tempdir;
+
+    static ENV_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+    #[tokio::test]
+    async fn router_disables_sync_v1_routes_when_flag_is_false() {
+        let router = create_router(false);
+
+        let res = TestClient::get("http://127.0.0.1/sync/count")
+            .send(router)
+            .await;
+        assert_eq!(res.status_code.unwrap(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn settings_uses_default_db_uri_when_config_file_missing() {
+        let _guard = ENV_LOCK.lock().expect("env lock poisoned");
+        let dir = tempdir().expect("tempdir should be created");
+
+        // SAFETY: guarded by process-wide mutex to avoid concurrent env mutation in tests.
+        unsafe { std::env::set_var("ATUIN_CONFIG_DIR", dir.path()) };
+
+        let settings = Settings::new().expect("settings should load with defaults");
+        assert_eq!(settings.db_settings.db_uri, "sqlite://atuin.db");
+
+        // SAFETY: guarded by process-wide mutex to avoid concurrent env mutation in tests.
+        unsafe { std::env::remove_var("ATUIN_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn settings_uses_db_uri_from_config_when_provided() {
+        let _guard = ENV_LOCK.lock().expect("env lock poisoned");
+        let dir = tempdir().expect("tempdir should be created");
+        let config_path = dir.path().join("server.toml");
+        std::fs::write(&config_path, "db_uri = \"sqlite://custom.db\"\n")
+            .expect("config should be written");
+
+        // SAFETY: guarded by process-wide mutex to avoid concurrent env mutation in tests.
+        unsafe { std::env::set_var("ATUIN_CONFIG_DIR", dir.path()) };
+
+        let settings = Settings::new().expect("settings should load from config");
+        assert_eq!(settings.db_settings.db_uri, "sqlite://custom.db");
+
+        // SAFETY: guarded by process-wide mutex to avoid concurrent env mutation in tests.
+        unsafe { std::env::remove_var("ATUIN_CONFIG_DIR") };
+    }
 }
