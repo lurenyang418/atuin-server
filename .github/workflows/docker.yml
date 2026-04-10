@@ -2,10 +2,8 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
-    branches: [main]
+    tags:
+      - '*'
 
 env:
   REGISTRY_GHCR: ghcr.io
@@ -58,7 +56,6 @@ jobs:
 
       # ---------- GitHub Container Registry ----------
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY_GHCR }}
@@ -71,17 +68,17 @@ jobs:
         with:
           images: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME_GHCR }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
-            type=sha,prefix=
+            type=sha
 
       - name: Build and push to GHCR
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-ghcr.outputs.tags }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME_GHCR }}:latest
+            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME_GHCR }}:${{ github.ref_name }}
           labels: ${{ steps.meta-ghcr.outputs.labels }}
           platforms: linux/amd64
           cache-from: type=gha
@@ -89,7 +86,6 @@ jobs:
 
       # ---------- Docker Hub ----------
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY_DOCKERHUB }}
@@ -102,17 +98,17 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME_DOCKERHUB }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
-            type=sha,prefix=
+            type=sha
 
       - name: Build and push to Docker Hub
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-dockerhub.outputs.tags }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME_DOCKERHUB }}:latest
+            ${{ env.IMAGE_NAME_DOCKERHUB }}:${{ github.ref_name }}
           labels: ${{ steps.meta-dockerhub.outputs.labels }}
           platforms: linux/amd64
           cache-from: type=gha
