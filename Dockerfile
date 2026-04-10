@@ -3,7 +3,8 @@
 FROM alpine:3.23
 
 RUN apk add --no-cache ca-certificates tzdata \
-    && addgroup -g 1000 atuin && adduser -u 1000 -G atuin -s /bin/sh -D atuin
+    && addgroup -g 1000 atuin && adduser -u 1000 -G atuin -s /bin/sh -D atuin \
+    && mkdir -p /app && chown -R atuin:atuin /app
 
 WORKDIR /app
 USER atuin
@@ -13,7 +14,6 @@ ENV ATUIN_CONFIG_DIR=/app
 
 EXPOSE 8888
 
-COPY atuin-server /app/atuin-server
+COPY --chown=atuin:atuin atuin-server /app/atuin-server
 
-ENTRYPOINT ["/app/atuin-server"]
-CMD ["start"]
+CMD ["/app/atuin-server", "start"]

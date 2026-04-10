@@ -43,11 +43,22 @@ docker pull ghcr.io/lurenyang418/atuin-server:latest
 # Docker Hub
 docker pull lurenyang/atuin-server:latest
 
-# Run with persistent data
-docker run -p 8888:8888 \
+# Run with persistent data (using defaults)
+docker run -d -p 8888:8888 \
   -v /path/to/data:/app \
   ghcr.io/lurenyang418/atuin-server:latest
+
+# Run with custom configuration
+docker run -d -p 8888:8888 \
+  -v /path/to/data:/app \
+  -v /path/to/your-server.toml:/app/server.toml \
+  ghcr.io/lurenyang418/atuin-server:latest
 ```
+
+**Default values (when no config is mounted):**
+- `db_uri = "sqlite:///atuin.db"` → `/app/atuin.db`
+- `host = "0.0.0.0"`, `port = 8888`
+- `open_registration = true`
 
 ## Configuration
 
