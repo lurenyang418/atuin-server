@@ -1,8 +1,8 @@
 use once_cell::sync::OnceCell;
 use salvo::conn::TcpListener;
-use salvo::limiter::LimitedBodyReader;
 use salvo::prelude::*;
 use salvo::writing::Text;
+use salvo::size_limiter::max_size;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -124,8 +124,8 @@ impl Settings {
                     db_uri: config
                         .get("db_uri")
                         .and_then(|v| v.as_str())
-                        .unwrap_or_else(|| default_db_uri().as_str())
-                        .to_string(),
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(default_db_uri),
                     read_db_uri: config
                         .get("read_db_uri")
                         .and_then(|v| v.as_str())
@@ -176,7 +176,7 @@ pub fn init_state(state: AppState) {
 }
 
 pub fn create_router() -> Router {
-    Router::new()
+    Router::with_hoop(max_size(10 * 1024 * 1024)) // 10MB limit
         .push(Router::with_path("/").get(handlers::index))
         .push(Router::with_path("/healthz").get(handlers::health_check))
         .push(Router::with_path("/metrics").get(metrics_handler))
@@ -204,7 +204,6 @@ pub fn create_router() -> Router {
         .push(Router::with_path("/api/v0/record/next").get(handlers::v0_record_next))
         .push(Router::with_path("/api/v0/store").delete(handlers::v0_store_delete))
         // Middleware
-        .hoop(LimitedBodyReader::new(50 * 1024 * 1024)) // 50MB limit for record uploads
         .hoop(middleware::clacks_overhead)
         .hoop(middleware::version_header)
 }
