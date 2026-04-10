@@ -2,7 +2,6 @@ use once_cell::sync::OnceCell;
 use salvo::conn::TcpListener;
 use salvo::prelude::*;
 use salvo::writing::Text;
-use salvo::size_limiter::max_size;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -176,7 +175,7 @@ pub fn init_state(state: AppState) {
 }
 
 pub fn create_router() -> Router {
-    Router::with_hoop(max_size(1024 * 1024 * 1024)) // 1GB limit
+    Router::new()
         .push(Router::with_path("/").get(handlers::index))
         .push(Router::with_path("/healthz").get(handlers::health_check))
         .push(Router::with_path("/metrics").get(metrics_handler))

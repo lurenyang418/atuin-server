@@ -604,8 +604,8 @@ pub async fn v0_record_post(req: &mut Request, res: &mut Response) {
         }
     };
 
-    // Parse record data
-    let _body: serde_json::Value = match req.parse_json().await {
+    // Parse record data - use 100MB limit for sync payloads
+    let _body: serde_json::Value = match req.parse_json_with_max_size(100 * 1024 * 1024).await {
         Ok(b) => b,
         Err(e) => {
             ServerError::Internal(format!("Failed to parse request: {}", e)).render(res);
