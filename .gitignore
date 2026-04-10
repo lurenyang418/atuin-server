@@ -1,0 +1,39 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+atuin-server
+*.exe
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Config (secrets)
+*.local.toml
+secrets.toml
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+
+# Test coverage
+coverage/
+*.profraw

@@ -1,0 +1,93 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact: atuin-server-x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact: atuin-server-aarch64-unknown-linux-musl
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: atuin-server-aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: atuin-server-x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: atuin-server-x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          if [ "${{ matrix.target }}" == "aarch64-apple-darwin" ]; then
+            rustup target add aarch64-apple-darwin
+          fi
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          OPENSSL_VENDORED: 1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools pkg-config libssl-dev sqlite3 libsqlite3-dev
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          BINARY="target/${{ matrix.target }}/release/atuin-server"
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            BINARY="${BINARY}.exe"
+          fi
+
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            7z a ${{ matrix.artifact }}.zip "$BINARY"
+            echo "ASSET_PATH=./${{ matrix.artifact }}.zip" >> $GITHUB_ENV
+            echo "ASSET_NAME=${{ matrix.artifact }}.zip" >> $GITHUB_ENV
+          else
+            tar -czvf ${{ matrix.artifact }}.tar.gz -C target/${{ matrix.target }}/release atuin-server
+            echo "ASSET_PATH=./${{ matrix.artifact }}.tar.gz" >> $GITHUB_ENV
+            echo "ASSET_NAME=${{ matrix.artifact }}.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
