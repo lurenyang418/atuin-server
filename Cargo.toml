@@ -18,8 +18,8 @@ categories = ["command-line-utilities", "web-programming"]
 salvo = "0.91"
 
 # atuin-crates - reuse official implementation from crates.io
-atuin-server-database = "18.13"
-atuin-server-sqlite = "18.13"
+atuin-server-database = "18.14"
+atuin-server-sqlite = "18.14"
 atuin-common = "18.13"
 
 # Serialization

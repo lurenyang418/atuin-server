@@ -187,9 +187,9 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "atuin-common"
-version = "18.13.6"
+version = "18.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b20fda29d87fe4eb23755805e9282ecbcf55ee9e083e707282b5e852f99e53ee"
+checksum = "595eab52a8d02a3dba7a40fbcc9fb883603484943ddec7900db1dd0a54f42d61"
 dependencies = [
  "base64",
  "directories",
@@ -237,9 +237,9 @@ dependencies = [
 
 [[package]]
 name = "atuin-server-database"
-version = "18.13.6"
+version = "18.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4373867071c970f41b6d006dc2dd61173d9e065387fa71ab8589f22dcacdcaf"
+checksum = "d76d329d7217bfe07f542d93f40827fe6775686de95688e162b165978a936626"
 dependencies = [
  "async-trait",
  "atuin-common",
@@ -252,9 +252,9 @@ dependencies = [
 
 [[package]]
 name = "atuin-server-sqlite"
-version = "18.13.6"
+version = "18.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "922be0e8a0b480e371905edf371e932ebbf2b2f6f75be40633ce87ec8ec49b4b"
+checksum = "a386f2801776b395b2b7894428ded125ca263f54a49ee9333d3a32e92ab56f20"
 dependencies = [
  "async-trait",
  "atuin-common",
