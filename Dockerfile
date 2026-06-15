@@ -1,6 +1,6 @@
 # Runtime image - amd64 only
 
-FROM alpine:3.23
+FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata
 
